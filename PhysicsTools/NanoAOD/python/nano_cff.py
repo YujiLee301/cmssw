@@ -28,6 +28,7 @@ from PhysicsTools.NanoAOD.NanoAODEDMEventContent_cff import *
 from PhysicsTools.NanoAOD.fsrPhotons_cff import *
 from PhysicsTools.NanoAOD.softActivity_cff import *
 from PhysicsTools.NanoAOD.l1trig_cff import *
+from PhysicsTools.NanoAOD.SSLPuppiProducer_cff import *
 
 nanoMetadata = cms.EDProducer("UniqueStringProducer",
     strings = cms.PSet(
@@ -66,10 +67,10 @@ nanoTableTaskCommon = cms.Task(
     vertexTask, isoTrackTask, jetAK8LepTask,  # must be after all the leptons
     softActivityTask,
     cms.Task(linkedObjects),
-    jetPuppiTablesTask, jetAK8TablesTask,
+    jetPuppiTablesTask, jetAK8TablesTask, sslPuppiProducerTask,
     muonTablesTask, fsrTablesTask, tauTablesTask, boostedTauTablesTask,
     electronTablesTask, lowPtElectronTablesTask, photonTablesTask,
-    globalTablesTask, vertexTablesTask, metTablesTask, extraFlagsTableTask,
+    globalTablesTask, vertexTablesTask, metTablesTask, extraFlagsTableTask, sslPuppiTablesTask,
     isoTrackTablesTask,softActivityTablesTask
 )
 
@@ -101,6 +102,17 @@ nanoSequenceFS = cms.Sequence(nanoSequenceCommon + cms.Sequence(nanoTableTaskFS)
 # GenVertex only stored in newer MiniAOD
 nanoSequenceMC = nanoSequenceFS.copy()
 nanoSequenceMC.insert(nanoSequenceFS.index(nanoSequenceCommon)+1,nanoSequenceOnlyFullSim)
+
+def nanoAOD_addSSLPuppi(process):
+    process.nanoTableTaskCommon.add(process.sslPuppiProducerTask)
+    process.nanoSequenceMC += process.SSLPuppiProducer
+    process.nanoSequenceMC += process.sslJetRelativeMassResidualTable
+    process.nanoSequenceMC += process.sslPFJetRelativeMassResidualTable
+    process.nanoSequenceMC += process.sslCHSJetRelativeMassResidualTable
+    process.nanoSequenceMC += process.sslPuppiJetRelativeMassResidualTable
+
+    return process
+
 
 # modifier which adds new tauIDs (currently only deepTauId2017v2p1 is being added)
 import RecoTauTag.RecoTau.tools.runTauIdMVA as tauIdConfig
@@ -194,6 +206,7 @@ def nanoAOD_activateVID(process):
         setupAllVIDIdsInModule(process,modname,setupVIDPhotonSelection)
 
     process.photonTask.add( process.egmPhotonIDTask )
+    process.photonTask.add(process.sslPuppiTablesTask)
 
     return process
 
@@ -260,7 +273,7 @@ def nanoAOD_customizeCommon(process):
     ).toModify(
         process, lambda p : nanoAOD_addBoostedTauIds(p, nanoAOD_boostedTau_switch.idsToAdd.value())
     )
-
+    nanoAOD_addSSLPuppi(process)
     return process
 
 ###increasing the precision of selected GenParticles.
